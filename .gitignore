@@ -1,0 +1,30 @@
+# dependencies
+node_modules/
+
+# runtime data (auto-generated)
+uploads/
+data/
+
+# logs & OS junk
+*.log
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Java / Maven build output
+games/aeroplane-chess/target/
+# keep games/aeroplane-chess/repo/ — local Maven dependency for websocket-gameroom
+
+# Monopoly Vite build output (outDir = docs)
+games/monopoly/docs/
+
+# extra lockfiles (project uses npm / package-lock.json)
+games/monopoly/yarn.lock
+games/monopoly/bun.lock
+
+# IDE / editor
+.idea/
+*.iml
+.vscode/
+*.swp
+*~

@@ -1,0 +1,30 @@
+spring:
+  mvc:
+    view:
+      prefix: /WEB-INF/jsp/
+      suffix: .jsp
+    favicon:
+      enabled: true
+server:
+  address: 0.0.0.0
+  session:
+    'tracking-modes': cookie
+
+websocket:
+  destination:
+    prefix:
+      broker: /game
+      application: /app
+  stomp:
+    endpoint: /aeroplanechess-websocket
+  gameroom:
+    config:
+      numof:
+        player: 4
+  aeroplanechess:
+    config:
+      dice:
+        min: 1
+        max: 6
+      numof:
+        aeroplane: 4

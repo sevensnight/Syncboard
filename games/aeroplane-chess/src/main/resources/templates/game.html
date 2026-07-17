@@ -1,0 +1,44 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<title>飞行棋演示页</title>
+<link href="/webjars/bootstrap/css/bootstrap.min.css" rel="stylesheet"></link>
+<link href="/main.css" rel="stylesheet"></link>
+<script src="/webjars/jquery/jquery.min.js"></script>
+<script src="/webjars/sockjs-client/sockjs.min.js"></script>
+<script src="/webjars/stomp-websocket/stomp.min.js"></script>
+<script src="script/aeroplane.js"></script>
+<style>
+	.red {color: red;}
+	.blue {color: blue;}
+	.green {color: green;}
+	.yellow {color: yellow;}
+</style>
+</head>
+<body>
+	<div id="main-content" class="container">
+		<div class="row">
+			<button class="roll-btn">掷骰子</button>
+			<button class="aeroplane-btn">1</button>
+			<button class="aeroplane-btn">2</button>
+			<button class="aeroplane-btn">3</button>
+			<button class="aeroplane-btn">4</button>
+		</div>
+		<div class="row">
+			<div class="col-md-6">
+				<div>玩家列表：</div>
+				<div class="player-list"></div>
+			</div>
+		</div>
+		<div class="row">
+			<div class="col-md-12">
+				<h3>日志</h3>
+			</div>
+			<div class="log col-md-6"></div>
+			<div class="col-md-6">
+				<div class="aeroplane-list"></div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

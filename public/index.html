@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SyncBoard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body class="sb-shell text-ink-900 dark:text-ink-50">
+    <div class="sb-shell">
+      <header class="sb-header">
+        <div class="sb-header-inner">
+          <div class="sb-brand">
+            <div class="sb-logo" aria-hidden="true">S</div>
+            <div class="min-w-0">
+              <p class="sb-brand-kicker">LAN Suite</p>
+              <h1 class="sb-brand-title truncate" data-i18n="appTitle">SyncBoard 内网通 Web 版</h1>
+            </div>
+          </div>
+
+          <div class="sb-header-meta">
+            <span id="connectionBadge" class="status-chip"></span>
+            <span id="roomBadge" class="status-chip"></span>
+            <span id="networkBadge" class="status-chip max-w-[280px] truncate"></span>
+          </div>
+
+          <div class="sb-header-actions">
+            <button id="langToggleButton" type="button" class="secondary-button" title="简/繁/EN/日">简</button>
+            <button id="auditReportButton" type="button" class="secondary-button" data-i18n="auditReport">协作简报</button>
+            <button id="joinRoomPopoverButton" type="button" class="secondary-button" aria-haspopup="dialog" aria-expanded="false" data-i18n="joinRoom">加入房间</button>
+
+            <div class="relative">
+              <button id="shareToggleButton" type="button" class="secondary-button" aria-expanded="false" aria-controls="sharePanel">
+                <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v14"/></svg>
+                <span data-i18n="shareRoom">分享房间</span>
+              </button>
+              <div id="sharePanel" class="sb-menu absolute right-0 top-[calc(100%+0.5rem)] z-40 hidden w-[min(92vw,320px)] p-3">
+                <div class="mb-2 flex items-center justify-between gap-2">
+                  <p class="text-2xs font-semibold uppercase tracking-wider text-[var(--fg-muted)]">Share link</p>
+                  <button id="shareLinkButton" type="button" class="secondary-button !min-h-8 !px-2.5 !text-2xs">复制链接</button>
+                </div>
+                <div class="flex items-center gap-3">
+                  <img id="qrCodeImage" class="h-20 w-20 shrink-0 rounded-[10px] border border-[var(--border)] bg-white p-1.5" alt="房间二维码" />
+                  <p id="boardAddressText" class="min-w-0 break-all text-xs leading-relaxed text-[var(--fg-secondary)]">加载中...</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="relative">
+              <button id="appMenuButton" type="button" class="secondary-button" aria-haspopup="menu" aria-expanded="false" aria-controls="appMenuPanel">
+                <span id="appMenuCurrentText" class="font-semibold">🎨 互动白板</span>
+                <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+              <div id="appMenuPanel" class="sb-menu absolute right-0 top-[calc(100%+0.5rem)] z-50 hidden" role="menu" aria-hidden="true">
+                <button type="button" class="app-menu-item" data-app="whiteboard" role="menuitem">🎨 互动白板</button>
+                <button type="button" class="app-menu-item" data-app="monopoly" role="menuitem">🎲 大富翁</button>
+                <button type="button" class="app-menu-item" data-app="plane" role="menuitem">✈️ 飞行棋</button>
+              </div>
+            </div>
+
+            <button id="themeToggleButton" type="button" class="icon-button" aria-label="切换深浅色"></button>
+            <button id="mobileMenuButton" type="button" class="icon-button lg:hidden" aria-label="打开协作侧栏">
+              <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+            </button>
+            <button id="desktopSidebarToggleButton" type="button" class="secondary-button hidden lg:inline-flex" aria-label="展开协作侧栏" aria-expanded="true">侧栏</button>
+          </div>
+        </div>
+      </header>
+
+      <main class="sb-main">
+        <section class="relative flex min-h-0 min-w-0 flex-1 flex-col gap-2.5 aspect-square h-auto">
+          <div class="status-strip grid grid-cols-2 sm:grid-cols-5">
+            <article class="status-pill"><p class="status-pill-label" data-i18n="currentUser">当前用户</p><p id="currentUserText" class="status-pill-value">-</p></article>
+            <article class="status-pill"><p class="status-pill-label" data-i18n="currentRoom">当前房间</p><p id="currentRoomText" class="status-pill-value">-</p></article>
+            <article class="status-pill"><p class="status-pill-label" data-i18n="onlineCount">在线人数</p><p id="onlineCountText" class="status-pill-value">0</p></article>
+            <article class="status-pill"><p class="status-pill-label" data-i18n="onlineDevices">在线设备</p><p id="onlineUsersText" class="status-pill-value status-pill-value-sm">—</p></article>
+            <article class="status-pill"><p class="status-pill-label" data-i18n="currentApp">当前应用</p><p id="currentAppText" class="status-pill-value status-pill-value-sm">🎨 互动白板</p></article>
+          </div>
+
+          <div class="flex min-h-0 flex-1 items-stretch justify-center lg:h-full">
+            <div id="boardStage" class="relative h-full w-full min-h-0 min-w-0">
+              <div id="whiteboardStage" class="h-full w-full">
+                <canvas id="board" width="1111" height="1111" class="block h-full w-full touch-none bg-white dark:bg-ink-950"></canvas>
+
+                <div id="toolbarPanel" class="compact-toolbar absolute left-3 top-3 z-20 hidden w-[248px] flex-col p-2.5">
+                  <div class="grid w-full grid-cols-2 gap-1.5">
+                    <button id="brushButton" type="button" class="toolbar-action w-full" data-i18n="brush">画笔</button>
+                    <button id="eraserButton" type="button" class="toolbar-action w-full" data-i18n="eraser">橡皮</button>
+                    <button id="rectButton" type="button" class="toolbar-action w-full" data-i18n="shapeRect">矩形</button>
+                    <button id="ellipseButton" type="button" class="toolbar-action w-full" data-i18n="shapeEllipse">椭圆</button>
+                    <button id="arrowButton" type="button" class="toolbar-action w-full" data-i18n="shapeArrow">箭头</button>
+                    <button id="textButton" type="button" class="toolbar-action w-full" data-i18n="textTool">文字</button>
+                    <button id="selectButton" type="button" class="toolbar-action w-full" data-i18n="selectTool">选择</button>
+                    <button id="annotateButton" type="button" class="toolbar-action w-full" data-i18n="annotate">标注截图</button>
+                    <button id="undoButton" type="button" class="toolbar-action w-full" data-i18n="undo">撤销</button>
+                    <button id="redoButton" type="button" class="toolbar-action w-full" data-i18n="redo">重做</button>
+                  </div>
+                  <input id="annotateInput" type="file" accept="image/*" class="hidden" />
+
+                  <div class="mt-2.5 w-full">
+                    <div class="flex w-full flex-wrap items-center gap-1.5">
+                      <button type="button" data-color-swatch="#111827" class="color-swatch" aria-label="切换颜色 #111827"></button>
+                      <button type="button" data-color-swatch="#4f46e5" class="color-swatch" aria-label="切换颜色 #4f46e5"></button>
+                      <button type="button" data-color-swatch="#e11d48" class="color-swatch" aria-label="切换颜色 #e11d48"></button>
+                      <button type="button" data-color-swatch="#059669" class="color-swatch" aria-label="切换颜色 #059669"></button>
+                      <button type="button" data-color-swatch="#d97706" class="color-swatch" aria-label="切换颜色 #d97706"></button>
+                      <label class="color-picker-swatch" aria-label="自定义颜色">
+                        <input id="colorPicker" class="sr-only" type="color" value="#4f46e5" />
+                        <span>+</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div class="mt-2.5 w-full">
+                    <div class="tool-size-group w-full">
+                      <input id="brushSize" class="w-full" type="range" min="1" max="24" value="4" />
+                      <strong id="brushSizeValue" class="shrink-0 text-2xs font-semibold text-[var(--fg-muted)]">4px</strong>
+                    </div>
+                  </div>
+
+                  <div class="mt-2.5 grid w-full grid-cols-2 gap-1.5 border-t border-[var(--border)] pt-2.5">
+                    <button id="saveBoardButton" type="button" class="toolbar-action w-full" data-i18n="saveBoard">保存白板</button>
+                    <button id="clearButton" type="button" class="toolbar-action btn-danger w-full" data-i18n="clearBoard">清空白板</button>
+                  </div>
+                </div>
+
+                <div id="toolbarDrawer" class="absolute inset-x-3 bottom-3 hidden sb-panel p-2.5 lg:hidden safe-bottom">
+                  <div class="grid w-full grid-cols-2 gap-1.5">
+                    <button id="brushButtonMirror" type="button" class="toolbar-action w-full" data-i18n="brush">画笔</button>
+                    <button id="eraserButtonMirror" type="button" class="toolbar-action w-full" data-i18n="eraser">橡皮</button>
+                    <button id="rectButtonMirror" type="button" class="toolbar-action w-full" data-i18n="shapeRect">矩形</button>
+                    <button id="ellipseButtonMirror" type="button" class="toolbar-action w-full" data-i18n="shapeEllipse">椭圆</button>
+                    <button id="arrowButtonMirror" type="button" class="toolbar-action w-full" data-i18n="shapeArrow">箭头</button>
+                    <button id="textButtonMirror" type="button" class="toolbar-action w-full" data-i18n="textTool">文字</button>
+                    <button id="selectButtonMirror" type="button" class="toolbar-action w-full" data-i18n="selectTool">选择</button>
+                    <button id="annotateButtonMirror" type="button" class="toolbar-action w-full" data-i18n="annotate">标注截图</button>
+                    <button id="undoButtonMirror" type="button" class="toolbar-action w-full" data-i18n="undo">撤销</button>
+                    <button id="redoButtonMirror" type="button" class="toolbar-action w-full" data-i18n="redo">重做</button>
+                  </div>
+
+                  <div class="mt-2.5 w-full">
+                    <div class="flex w-full flex-wrap items-center gap-1.5">
+                      <button type="button" data-color-swatch="#111827" class="color-swatch" aria-label="切换颜色 #111827"></button>
+                      <button type="button" data-color-swatch="#4f46e5" class="color-swatch" aria-label="切换颜色 #4f46e5"></button>
+                      <button type="button" data-color-swatch="#e11d48" class="color-swatch" aria-label="切换颜色 #e11d48"></button>
+                      <button type="button" data-color-swatch="#059669" class="color-swatch" aria-label="切换颜色 #059669"></button>
+                      <button type="button" data-color-swatch="#d97706" class="color-swatch" aria-label="切换颜色 #d97706"></button>
+                      <label class="color-picker-swatch" aria-label="自定义颜色">
+                        <input id="colorPickerMirror" class="sr-only" type="color" value="#4f46e5" />
+                        <span>+</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div class="mt-2.5 w-full">
+                    <label class="tool-size-group w-full">
+                      <span class="sr-only">粗细</span>
+                      <input id="brushSizeMirror" class="w-full" type="range" min="1" max="24" value="4" />
+                      <strong class="shrink-0 text-2xs font-semibold text-[var(--fg-muted)]">粗细</strong>
+                    </label>
+                  </div>
+
+                  <div class="mt-2.5 grid w-full grid-cols-2 gap-1.5 border-t border-[var(--border)] pt-2.5">
+                    <button id="saveBoardButtonMirror" type="button" class="toolbar-action w-full" data-i18n="saveBoard">保存白板</button>
+                    <button id="clearButtonMirror" type="button" class="toolbar-action btn-danger w-full" data-i18n="clearBoard">清空白板</button>
+                  </div>
+                </div>
+
+                <button id="fabButton" type="button" class="floating-tool-button absolute bottom-4 right-4 z-20">工具栏</button>
+              </div>
+
+              <iframe id="gameStage" class="hidden h-full w-full rounded-[18px] border-0" title="游戏舞台"></iframe>
+              <div id="monopolyLoading" class="pointer-events-none absolute inset-0 z-30 hidden flex items-center justify-center bg-black/40 px-6 text-center backdrop-blur-[2px]">
+                <div class="max-w-sm px-5 py-4">
+                  <p data-monopoly-loading-text class="text-sm font-semibold tracking-tight">正在启动引擎…</p>
+                  <p class="mt-1.5 text-xs">连接成功后将自动进入</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div id="sidebarBackdrop" class="absolute inset-0 z-20 hidden bg-black/40 lg:hidden"></div>
+
+        <aside id="sidebar" class="sb-panel absolute right-0 top-0 z-30 flex h-full min-h-0 w-full max-w-[400px] translate-x-full flex-col overflow-hidden p-3 transition-transform duration-300 lg:static lg:z-auto lg:w-[320px] lg:max-w-none lg:translate-x-0">
+          <div id="sidebarHeaderRow" class="mb-3 flex items-center justify-between gap-3">
+            <div id="sidebarHeaderTitle">
+              <p class="text-2xs font-semibold uppercase tracking-[0.14em] text-[var(--fg-muted)]" data-i18n="collabCenter">协作中心</p>
+              <h2 class="mt-0.5 text-sm font-bold tracking-tight text-[var(--fg)]" data-i18n="chatFilesClip">聊天 / 文件 / 剪贴板</h2>
+            </div>
+            <button id="closeSidebarButton" type="button" class="icon-button lg:hidden" aria-label="关闭">
+              <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+            </button>
+            <button id="desktopSidebarCloseButton" type="button" class="icon-button hidden lg:inline-flex" aria-label="折叠侧栏">
+              <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+            </button>
+          </div>
+
+          <div class="sb-tabs mb-3">
+            <button id="chatTabButton" type="button" class="panel-tab is-active" data-i18n="chat">聊天 <span id="unreadBadge" class="ml-1.5 hidden">0</span></button>
+            <button id="filesTabButton" type="button" class="panel-tab" data-i18n="files">文件</button>
+            <button id="clipboardTabButton" type="button" class="panel-tab" data-i18n="clipboard">云剪贴板</button>
+          </div>
+
+          <section class="sb-surface-muted mb-3 overflow-hidden px-2.5 py-2.5">
+            <div class="mb-1.5 flex items-center justify-between gap-2">
+              <p class="text-2xs font-semibold uppercase tracking-[0.12em] text-[var(--fg-muted)]" data-i18n="recentActivity">最近活动</p>
+            </div>
+            <div id="activityList" class="max-h-36 space-y-1.5 overflow-y-auto text-xs"></div>
+            <div class="mt-2 border-t border-[var(--border)] pt-2">
+              <p class="mb-1 text-2xs font-semibold uppercase tracking-[0.12em] text-[var(--fg-muted)]" data-i18n="roomHistory">房间历史</p>
+              <div id="roomHistoryList" class="max-h-24 space-y-1 overflow-y-auto text-xs"></div>
+            </div>
+          </section>
+
+          <section id="chatPanel" class="flex min-h-0 flex-1 flex-col gap-2.5 overflow-hidden">
+            <div class="flex items-center justify-between gap-2">
+              <p class="text-xs font-semibold text-[var(--fg-secondary)]" data-i18n="publicChannel">公共频道</p>
+              <button id="clearChatButton" type="button" class="secondary-button !min-h-8 !px-2.5 !text-2xs" data-i18n="clearChat">清空聊天</button>
+            </div>
+            <div class="space-y-1">
+              <label class="block space-y-1">
+                <span class="text-2xs font-medium text-[var(--fg-muted)]">发送对象</span>
+                <select id="privateSelect" class="field-input !min-h-8 !py-1.5 !text-xs"></select>
+              </label>
+              <p id="mentionHint" class="text-2xs text-[var(--fg-muted)]"></p>
+            </div>
+            <div class="relative flex min-h-0 flex-1 flex-col">
+              <div id="chatList" class="chat-scroll min-h-0 flex-1 overflow-y-auto pr-0.5 pb-8"></div>
+              <button id="jumpToLatestButton" type="button" class="secondary-button absolute bottom-2 left-1/2 hidden -translate-x-1/2 !min-h-8 !px-3 !text-2xs shadow-soft">最新</button>
+            </div>
+            <p id="typingStatusText" class="min-h-[1rem] text-2xs text-[var(--fg-muted)]"></p>
+            <div class="relative space-y-2">
+              <div class="flex items-center justify-between gap-2">
+                <button id="emojiToggleButton" type="button" class="secondary-button !min-h-8 !px-2.5 !text-2xs" aria-expanded="false" aria-controls="emojiBar">表情</button>
+              </div>
+              <div id="emojiBar" class="absolute bottom-full left-0 z-50 mb-2 hidden max-h-56 w-full grid-cols-7 justify-items-center gap-1 overflow-y-auto rounded-[10px] border border-[var(--border)] bg-[var(--bg-elevated)] p-2 shadow-pop" aria-hidden="true" style="display:none"></div>
+              <form id="chatForm" class="relative space-y-2">
+                <div id="mentionPopup" class="chat-mention-popup absolute bottom-full left-0 z-50 mb-2 hidden max-h-48 w-full overflow-y-auto p-1" aria-hidden="true"></div>
+                <textarea id="chatInput" class="field-input min-h-[80px] resize-none" maxlength="500" placeholder="消息 · @提及 · Enter 发送"></textarea>
+                <div class="flex items-center justify-between gap-2">
+                  <p id="chatLengthText" class="text-2xs text-[var(--fg-muted)]">0 / 500</p>
+                  <button type="submit" class="primary-button !min-h-8 !px-3 !text-xs" data-i18n="sendMessage">发送消息</button>
+                </div>
+              </form>
+            </div>
+          </section>
+
+          <section id="filesPanel" class="hidden min-h-0 flex-1 flex-col gap-3 overflow-hidden">
+            <form id="uploadForm" class="space-y-2">
+              <input id="uploadInput" type="file" class="hidden" />
+              <div id="uploadDropzone" class="cursor-pointer px-4 py-7 text-center text-sm">
+                <p class="font-semibold text-[var(--fg)]">拖拽或点击上传</p>
+                <p class="mt-1 text-2xs text-[var(--fg-muted)]">单文件不超过 50MB</p>
+              </div>
+            </form>
+            <div id="uploadProgress" class="hidden">
+              <div class="flex items-center justify-between gap-2 text-2xs text-[var(--fg-muted)]">
+                <span>上传进度</span>
+                <span id="uploadProgressText"></span>
+              </div>
+              <div class="progress-track mt-2">
+                <div id="uploadProgressBar" class="progress-fill w-0"></div>
+              </div>
+            </div>
+            <div id="fileList" class="min-h-0 flex-1 space-y-2 overflow-y-auto"></div>
+          </section>
+
+          <section id="clipboardPanel" class="clipboard-panel hidden min-h-0 flex-1 flex-col overflow-hidden">
+            <div class="clipboard-composer mb-3">
+              <p class="clipboard-composer-label">跨设备闪传</p>
+              <textarea id="clipboardInput" class="field-input clipboard-composer-input" maxlength="8000" placeholder="粘贴文本，发送到房间设备"></textarea>
+              <div class="clipboard-composer-actions">
+                <button id="sendClipboardButton" type="button" class="primary-button clipboard-send-btn">发送剪贴板</button>
+              </div>
+            </div>
+            <div id="clipboardList" class="clipboard-list min-h-0 flex-1 overflow-y-auto"></div>
+          </section>
+        </aside>
+      </main>
+    </div>
+
+    <div id="connectionBanner" class="pointer-events-none fixed inset-x-0 top-0 z-[90] hidden px-3 pt-3">
+      <div class="mx-auto max-w-xl px-3 py-2 text-center" data-i18n="reconnectBanner">连接已断开，正在尝试重连…</div>
+    </div>
+    <div id="toasts" class="pointer-events-none fixed right-3 top-3 z-50 flex w-[min(340px,calc(100vw-1.5rem))] flex-col gap-2"></div>
+    <div id="clipboardToasts" class="pointer-events-none fixed bottom-3 right-3 z-50 flex w-[min(380px,calc(100vw-1.5rem))] flex-col gap-2"></div>
+
+    <div id="joinRoomModal" class="fixed inset-0 z-[100] hidden">
+      <div id="joinRoomBackdrop" class="sb-modal-backdrop"></div>
+      <section class="sb-modal" role="dialog" aria-modal="true" aria-labelledby="joinRoomDialogTitle">
+        <div class="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <p class="sb-modal-kicker">Identity</p>
+            <h2 id="joinRoomDialogTitle" class="sb-modal-title mt-1">加入房间</h2>
+          </div>
+          <button id="closeJoinRoomModalButton" type="button" class="icon-button" aria-label="关闭">
+            <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+        </div>
+        <div class="space-y-4">
+          <label class="block space-y-1.5">
+            <span class="block text-2xs font-semibold uppercase tracking-wider text-[var(--fg-muted)]">用户名</span>
+            <input id="usernameInput" class="field-input" type="text" maxlength="24" placeholder="输入你的名字" />
+          </label>
+          <label class="block space-y-1.5">
+            <span class="block text-2xs font-semibold uppercase tracking-wider text-[var(--fg-muted)]">房间</span>
+            <input id="roomInput" class="field-input" type="text" maxlength="32" placeholder="例如 design-room" />
+          </label>
+          <div>
+            <p class="mb-1.5 text-2xs font-semibold uppercase tracking-wider text-[var(--fg-muted)]" data-i18n="roomHistory">房间历史</p>
+            <div id="joinRoomHistoryList" class="max-h-28 space-y-1 overflow-y-auto text-xs"></div>
+          </div>
+          <button id="joinRoomButton" type="button" class="primary-button w-full">进入房间</button>
+        </div>
+      </section>
+    </div>
+
+    <div id="auditReportModal" class="fixed inset-0 z-[100] hidden">
+      <div id="auditReportBackdrop" class="sb-modal-backdrop"></div>
+      <section class="sb-modal" role="dialog" aria-modal="true" aria-labelledby="auditReportDialogTitle">
+        <div class="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <p class="sb-modal-kicker">Stats</p>
+            <h2 id="auditReportDialogTitle" class="sb-modal-title mt-1" data-i18n="auditReport">协作简报</h2>
+            <p id="auditReportRoomText" class="mt-1 text-xs text-[var(--fg-muted)]">—</p>
+          </div>
+          <button id="closeAuditReportModalButton" type="button" class="icon-button" aria-label="关闭">
+            <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+        </div>
+        <div id="auditReportPanel" class="grid grid-cols-2 gap-2 text-sm">
+          <p class="col-span-2 text-xs text-[var(--fg-muted)]">进入房间后显示</p>
+        </div>
+        <div class="mt-4">
+          <button id="refreshAuditReportButton" type="button" class="secondary-button w-full">刷新</button>
+        </div>
+      </section>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="module" src="/js/main.js"></script>
+  </body>
+</html>

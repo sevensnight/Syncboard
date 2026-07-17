@@ -1,0 +1,30 @@
+{
+  "name": "syncboard",
+  "version": "1.0.0",
+  "description": "A real-time collaborative whiteboard powered by Express and Socket.io.",
+  "main": "server.js",
+  "scripts": {
+    "build:css": "tailwindcss -i ./src/client/styles/app.css -o ./public/css/style.css --minify",
+    "prestart": "npm run build:css",
+    "clean:port": "node ./scripts/port-cleanup.mjs",
+    "start": "node server.js",
+    "start:clean": "npm run clean:port && npm start",
+    "test:self": "node ./scripts/self-check.mjs",
+    "test:smoke": "node ./.playwright-smoke.mjs"
+  },
+  "keywords": [
+    "whiteboard",
+    "socket.io",
+    "realtime",
+    "express"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.2.1",
+    "multer": "^2.1.1",
+    "qrcode": "^1.5.4",
+    "socket.io": "^4.8.3",
+    "tailwindcss": "^3.4.17"
+  }
+}
