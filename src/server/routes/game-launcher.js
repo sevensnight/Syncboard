@@ -4,77 +4,143 @@ const http = require('http');
 const net = require('net');
 const path = require('path');
 const { spawn } = require('child_process');
-const MONOPOLY_PORT = 3001;
-const MONOPOLY_HOST = '127.0.0.1';
-const MONOPOLY_START_TIMEOUT_MS = 40000;
-const MONOPOLY_POLL_INTERVAL_MS = 500;
 
-const PLANE_PORT = 3002;
-const PLANE_HOST = '127.0.0.1';
-const PLANE_START_TIMEOUT_MS = 120000;
-const PLANE_POLL_INTERVAL_MS = 500;
-const PLANE_WEBSOCKET_INFO_PATH = '/aeroplanechess-websocket/info';
+const gamesRoot = path.resolve(__dirname, '..', '..', '..', 'games');
 
-const monopolyProjectDir = path.resolve(__dirname, '..', '..', '..', 'games', 'monopoly');
-const monopolyPackageJson = path.join(monopolyProjectDir, 'package.json');
-const monopolyNodeModules = path.join(monopolyProjectDir, 'node_modules');
-const monopolyStartCommand = process.platform === 'win32' ? 'cmd.exe' : 'npm';
-const monopolyStartArgs = process.platform === 'win32'
-  ? [
-      '/d',
-      '/s',
-      '/c',
-      'npm',
-      'run',
-      'dev',
-      '--',
-      '--host',
-      MONOPOLY_HOST,
-      '--port',
-      String(MONOPOLY_PORT),
-      '--strictPort',
-      '--base',
-      '/Monopoly/',
-    ]
-  : [
-      'run',
-      'dev',
-      '--',
-      '--host',
-      MONOPOLY_HOST,
-      '--port',
-      String(MONOPOLY_PORT),
-      '--strictPort',
-      '--base',
-      '/Monopoly/',
-    ];
+/** @typedef {{
+ *  id: string,
+ *  label: string,
+ *  port: number,
+ *  host: string,
+ *  startTimeoutMs: number,
+ *  pollIntervalMs: number,
+ *  projectDir: string,
+ *  readyPath?: string,
+ *  requireNodeModules?: boolean,
+ *  packageJson?: string,
+ *  buildMarker?: string,
+ *  buildHint?: string,
+ *  getStartCommand: () => { command: string, args: string[], shellCommand?: string, logPath?: string },
+ * }} GameSpec */
 
-const planeProjectDir = path.resolve(__dirname, '..', '..', '..', 'games', 'aeroplane-chess');
-const planePomPath = path.join(planeProjectDir, 'pom.xml');
-const planeJarPath = path.join(planeProjectDir, 'target', 'aeroplane-chess-1.1-rc.jar');
-const planeLogPath = path.join(planeProjectDir, 'plane-start.log');
-const planeJavaArgs = '--add-opens=java.base/java.lang=ALL-UNNAMED';
-const planeServerArgs = `--server.port=${PLANE_PORT} --server.address=0.0.0.0`;
+/** @type {Record<string, GameSpec>} */
+const GAME_SPECS = {
+  monopoly: {
+    id: 'monopoly',
+    label: '大富翁',
+    port: 3001,
+    host: '127.0.0.1',
+    startTimeoutMs: 40000,
+    pollIntervalMs: 500,
+    projectDir: path.join(gamesRoot, 'monopoly'),
+    packageJson: path.join(gamesRoot, 'monopoly', 'package.json'),
+    requireNodeModules: true,
+    getStartCommand: () => {
+      const host = '127.0.0.1';
+      const port = 3001;
+      const npmArgs = [
+        'run', 'dev', '--',
+        '--host', host,
+        '--port', String(port),
+        '--strictPort',
+        '--base', '/Monopoly/',
+      ];
+      if (process.platform === 'win32') {
+        return {
+          command: 'cmd.exe',
+          args: ['/d', '/s', '/c', 'npm', ...npmArgs],
+        };
+      }
+      return { command: 'npm', args: npmArgs };
+    },
+  },
+  plane: {
+    id: 'plane',
+    label: '飞行棋',
+    port: 3002,
+    host: '127.0.0.1',
+    startTimeoutMs: 120000,
+    pollIntervalMs: 500,
+    projectDir: path.join(gamesRoot, 'aeroplane-chess'),
+    readyPath: '/aeroplanechess-websocket/info',
+    getStartCommand: () => {
+      const projectDir = path.join(gamesRoot, 'aeroplane-chess');
+      const jarPath = path.join(projectDir, 'target', 'aeroplane-chess-1.1-rc.jar');
+      const javaArgs = '--add-opens=java.base/java.lang=ALL-UNNAMED';
+      const serverArgs = '--server.port=3002 --server.address=0.0.0.0';
+      const javaCmd = `java ${javaArgs} -jar target/aeroplane-chess-1.1-rc.jar ${serverArgs}`;
+      const shellCommand = fs.existsSync(jarPath)
+        ? javaCmd
+        : `mvn -DskipTests package && ${javaCmd}`;
+      const logPath = path.join(projectDir, 'plane-start.log');
+      if (process.platform === 'win32') {
+        return { command: 'cmd.exe', args: ['/d', '/s', '/c', shellCommand], shellCommand, logPath };
+      }
+      return { command: 'sh', args: ['-lc', shellCommand], shellCommand, logPath };
+    },
+  },
+  uno: {
+    id: 'uno',
+    label: 'UNO',
+    port: 3003,
+    host: '127.0.0.1',
+    startTimeoutMs: 30000,
+    pollIntervalMs: 500,
+    projectDir: path.join(gamesRoot, 'uno'),
+    packageJson: path.join(gamesRoot, 'uno', 'package.json'),
+    requireNodeModules: true,
+    buildMarker: path.join(gamesRoot, 'uno', 'client', 'build', 'index.html'),
+    buildHint: '请先在 games/uno/client 执行 npm install && npm run build',
+    getStartCommand: () => {
+      const envPrefix = process.platform === 'win32'
+        ? 'set PORT=3003&& set HOST=0.0.0.0&& set NODE_ENV=production&&'
+        : 'PORT=3003 HOST=0.0.0.0 NODE_ENV=production';
+      const shellCommand = process.platform === 'win32'
+        ? `${envPrefix} node server.js`
+        : `${envPrefix} node server.js`;
+      if (process.platform === 'win32') {
+        return { command: 'cmd.exe', args: ['/d', '/s', '/c', shellCommand], shellCommand };
+      }
+      return { command: 'sh', args: ['-lc', shellCommand], shellCommand };
+    },
+  },
+  skribbl: {
+    id: 'skribbl',
+    label: '你画我猜',
+    port: 3004,
+    host: '127.0.0.1',
+    startTimeoutMs: 30000,
+    pollIntervalMs: 500,
+    projectDir: path.join(gamesRoot, 'skribbl'),
+    packageJson: path.join(gamesRoot, 'skribbl', 'package.json'),
+    requireNodeModules: true,
+    getStartCommand: () => {
+      const shellCommand = process.platform === 'win32'
+        ? 'set PORT=3004&& set HOST=0.0.0.0&& node ./bin/www'
+        : 'PORT=3004 HOST=0.0.0.0 node ./bin/www';
+      if (process.platform === 'win32') {
+        return { command: 'cmd.exe', args: ['/d', '/s', '/c', shellCommand], shellCommand };
+      }
+      return { command: 'sh', args: ['-lc', shellCommand], shellCommand };
+    },
+  },
+};
 
-function buildPlaneStartShellCommand() {
-  // Skip Maven package when jar already exists — cold start drops from minutes to seconds.
-  const hasJar = fs.existsSync(planeJarPath);
-  // Avoid quoting the relative jar path: cmd.exe + java on Windows treats quoted relative
-  // paths as a different file and fails with "Unable to access jarfile".
-  const javaCmd = `java ${planeJavaArgs} -jar target/aeroplane-chess-1.1-rc.jar ${planeServerArgs}`;
-  if (hasJar) {
-    return javaCmd;
-  }
-  return `mvn -DskipTests package && ${javaCmd}`;
-}
+/** @type {Record<string, import('child_process').ChildProcess | null>} */
+const managedProcesses = {
+  monopoly: null,
+  plane: null,
+  uno: null,
+  skribbl: null,
+};
 
-const planeStartCommand = process.platform === 'win32' ? 'cmd.exe' : 'sh';
-
-
-let monopolyStartupPromise = null;
-let planeStartupPromise = null;
-let monopolyProcess = null;
-let planeProcess = null;
+/** @type {Record<string, Promise<any> | null>} */
+const startupPromises = {
+  monopoly: null,
+  plane: null,
+  uno: null,
+  skribbl: null,
+};
 
 function stopProcessTree(processHandle) {
   if (!processHandle || processHandle.killed || processHandle.exitCode !== null) {
@@ -97,12 +163,11 @@ function stopProcessTree(processHandle) {
 }
 
 function stopManagedGameProcesses() {
-  stopProcessTree(monopolyProcess);
-  stopProcessTree(planeProcess);
-  monopolyProcess = null;
-  planeProcess = null;
-  monopolyStartupPromise = null;
-  planeStartupPromise = null;
+  Object.keys(managedProcesses).forEach((id) => {
+    stopProcessTree(managedProcesses[id]);
+    managedProcesses[id] = null;
+    startupPromises[id] = null;
+  });
 }
 
 function sleep(ms) {
@@ -128,14 +193,6 @@ function checkPortOpen(host, port, { timeoutMs = 800 } = {}) {
 
     socket.connect(port, host);
   });
-}
-
-function isMonopolyPortOpen({ timeoutMs = 800 } = {}) {
-  return checkPortOpen(MONOPOLY_HOST, MONOPOLY_PORT, { timeoutMs });
-}
-
-function isPlanePortOpen({ timeoutMs = 800 } = {}) {
-  return checkPortOpen(PLANE_HOST, PLANE_PORT, { timeoutMs });
 }
 
 function checkHttpPathReady(host, port, pathToCheck, { timeoutMs = 1500 } = {}) {
@@ -164,18 +221,29 @@ function checkHttpPathReady(host, port, pathToCheck, { timeoutMs = 1500 } = {}) 
   });
 }
 
-async function isPlaneServiceReady({ timeoutMs = 1500 } = {}) {
-  const portOpen = await isPlanePortOpen({ timeoutMs });
+/**
+ * @param {GameSpec} spec
+ */
+async function isGameReady(spec, { timeoutMs = 1500 } = {}) {
+  const portOpen = await checkPortOpen(spec.host, spec.port, { timeoutMs });
   if (!portOpen) {
     return false;
   }
 
-  const pageReady = await checkHttpPathReady(PLANE_HOST, PLANE_PORT, '/', { timeoutMs });
-  if (!pageReady) {
-    return false;
+  if (spec.id === 'plane') {
+    const pageReady = await checkHttpPathReady(spec.host, spec.port, '/', { timeoutMs });
+    if (!pageReady) {
+      return false;
+    }
+    return checkHttpPathReady(spec.host, spec.port, spec.readyPath || '/', { timeoutMs });
   }
 
-  return checkHttpPathReady(PLANE_HOST, PLANE_PORT, PLANE_WEBSOCKET_INFO_PATH, { timeoutMs });
+  // HTTP root for Node games (UNO / Skribbl / Monopoly Vite).
+  if (spec.id === 'uno' || spec.id === 'skribbl' || spec.id === 'monopoly') {
+    return checkHttpPathReady(spec.host, spec.port, '/', { timeoutMs });
+  }
+
+  return true;
 }
 
 async function waitForServiceReady({
@@ -213,134 +281,76 @@ async function waitForServiceReady({
   throw new Error(timeoutMessage);
 }
 
-async function waitForMonopolyReady({ getSpawnError, getExitInfo }) {
-  await waitForServiceReady({
-    isReady: isMonopolyPortOpen,
-    timeoutMs: MONOPOLY_START_TIMEOUT_MS,
-    pollIntervalMs: MONOPOLY_POLL_INTERVAL_MS,
-    startErrorMessage: '启动大富翁失败：',
-    earlyExitMessage: '大富翁启动进程提前退出',
-    timeoutMessage: '等待大富翁服务启动超时，请检查 Node 环境与依赖安装状态。',
-    getSpawnError,
-    getExitInfo,
-  });
-}
-
-async function waitForPlaneReady({ getSpawnError, getExitInfo }) {
-  await waitForServiceReady({
-    isReady: isPlaneServiceReady,
-    timeoutMs: PLANE_START_TIMEOUT_MS,
-    pollIntervalMs: PLANE_POLL_INTERVAL_MS,
-    startErrorMessage: '启动飞行棋失败：',
-    earlyExitMessage: '飞行棋启动进程提前退出',
-    timeoutMessage: '等待飞行棋服务启动超时，请检查 Java/Maven 环境与依赖状态。',
-    getSpawnError,
-    getExitInfo,
-  });
-}
-
-async function launchMonopolyProcess() {
-  if (!fs.existsSync(monopolyProjectDir)) {
-    throw new Error(`未找到大富翁目录：${monopolyProjectDir}`);
+/**
+ * @param {GameSpec} spec
+ */
+async function launchGameProcess(spec) {
+  if (!fs.existsSync(spec.projectDir)) {
+    throw new Error(`未找到${spec.label}目录：${spec.projectDir}`);
   }
 
-  if (!fs.existsSync(monopolyPackageJson)) {
-    throw new Error(`未找到 package.json：${monopolyPackageJson}`);
+  if (spec.packageJson && !fs.existsSync(spec.packageJson)) {
+    throw new Error(`未找到 package.json：${spec.packageJson}`);
   }
 
-  if (!fs.existsSync(monopolyNodeModules)) {
-    throw new Error('大富翁依赖尚未安装，请先在 games/monopoly 目录执行 npm install。');
+  if (spec.requireNodeModules) {
+    const nm = path.join(spec.projectDir, 'node_modules');
+    if (!fs.existsSync(nm)) {
+      throw new Error(`${spec.label}依赖尚未安装，请先在 ${spec.projectDir} 执行 npm install。`);
+    }
+  }
+
+  if (spec.buildMarker && !fs.existsSync(spec.buildMarker)) {
+    throw new Error(`${spec.label}前端尚未构建。${spec.buildHint || ''}`);
+  }
+
+  // Plane-specific pom check
+  if (spec.id === 'plane') {
+    const pom = path.join(spec.projectDir, 'pom.xml');
+    if (!fs.existsSync(pom)) {
+      throw new Error(`未找到飞行棋 Maven 配置：${pom}`);
+    }
   }
 
   let spawnError = null;
   let exitInfo = null;
-
-  const processHandle = spawn(monopolyStartCommand, monopolyStartArgs, {
-    cwd: monopolyProjectDir,
-    windowsHide: true,
-    stdio: 'ignore',
-  });
-
-  monopolyProcess = processHandle;
-
-  processHandle.once('error', (error) => {
-    spawnError = error;
-    if (monopolyProcess === processHandle) {
-      monopolyProcess = null;
-    }
-  });
-
-  processHandle.once('exit', (code, signal) => {
-    exitInfo = { code, signal };
-    if (monopolyProcess === processHandle) {
-      monopolyProcess = null;
-    }
-  });
-
-  processHandle.unref();
-
-  try {
-    await waitForMonopolyReady({
-      getSpawnError: () => spawnError,
-      getExitInfo: () => exitInfo,
-    });
-  } catch (error) {
-    stopProcessTree(processHandle);
-    if (monopolyProcess === processHandle) {
-      monopolyProcess = null;
-    }
-    throw error;
-  }
-
-  return {
-    ok: true,
-    status: 'started',
-  };
-}
-
-async function launchPlaneProcess() {
-  if (!fs.existsSync(planeProjectDir)) {
-    throw new Error(`未找到飞行棋目录：${planeProjectDir}`);
-  }
-
-  if (!fs.existsSync(planePomPath)) {
-    throw new Error(`未找到飞行棋 Maven 配置：${planePomPath}`);
-  }
-
-  let spawnError = null;
-  let exitInfo = null;
-  const shellCommand = buildPlaneStartShellCommand();
-  const planeStartArgs = process.platform === 'win32'
-    ? ['/d', '/s', '/c', shellCommand]
-    : ['-lc', shellCommand];
+  const start = spec.getStartCommand();
 
   let logFd = 'ignore';
-  try {
-    logFd = fs.openSync(planeLogPath, 'a');
-    fs.writeSync(logFd, `\n==== plane start ${new Date().toISOString()} ====\n${shellCommand}\n`);
-  } catch (_error) {
-    logFd = 'ignore';
+  if (start.logPath) {
+    try {
+      logFd = fs.openSync(start.logPath, 'a');
+      fs.writeSync(logFd, `\n==== ${spec.id} start ${new Date().toISOString()} ====\n${start.shellCommand || ''}\n`);
+    } catch (_error) {
+      logFd = 'ignore';
+    }
   }
 
-  const processHandle = spawn(planeStartCommand, planeStartArgs, {
-    cwd: planeProjectDir,
+  const processHandle = spawn(start.command, start.args, {
+    cwd: spec.projectDir,
     windowsHide: true,
     stdio: logFd === 'ignore' ? 'ignore' : ['ignore', logFd, logFd],
+    env: {
+      ...process.env,
+      PORT: String(spec.port),
+      HOST: '0.0.0.0',
+      NODE_ENV: process.env.NODE_ENV || 'production',
+    },
   });
 
-  planeProcess = processHandle;
+  managedProcesses[spec.id] = processHandle;
 
   processHandle.once('error', (error) => {
     spawnError = error;
-    if (planeProcess === processHandle) {
-      planeProcess = null;
+    if (managedProcesses[spec.id] === processHandle) {
+      managedProcesses[spec.id] = null;
     }
   });
 
   processHandle.once('exit', (code, signal) => {
     exitInfo = { code, signal };
-    if (planeProcess === processHandle) {
-      planeProcess = null;
+    if (managedProcesses[spec.id] === processHandle) {
+      managedProcesses[spec.id] = null;
     }
     if (typeof logFd === 'number') {
       try {
@@ -354,17 +364,23 @@ async function launchPlaneProcess() {
   processHandle.unref();
 
   try {
-    await waitForPlaneReady({
+    await waitForServiceReady({
+      isReady: () => isGameReady(spec),
+      timeoutMs: spec.startTimeoutMs,
+      pollIntervalMs: spec.pollIntervalMs,
+      startErrorMessage: `启动${spec.label}失败：`,
+      earlyExitMessage: `${spec.label}启动进程提前退出`,
+      timeoutMessage: `等待${spec.label}服务启动超时，请检查依赖与环境。`,
       getSpawnError: () => spawnError,
       getExitInfo: () => exitInfo,
     });
   } catch (error) {
     stopProcessTree(processHandle);
-    if (planeProcess === processHandle) {
-      planeProcess = null;
+    if (managedProcesses[spec.id] === processHandle) {
+      managedProcesses[spec.id] = null;
     }
-    const hint = fs.existsSync(planeLogPath)
-      ? ` 详情见 ${planeLogPath}`
+    const hint = start.logPath && fs.existsSync(start.logPath)
+      ? ` 详情见 ${start.logPath}`
       : '';
     throw new Error(`${error.message}${hint}`);
   }
@@ -372,88 +388,78 @@ async function launchPlaneProcess() {
   return {
     ok: true,
     status: 'started',
-    port: PLANE_PORT,
-    jarExists: fs.existsSync(planeJarPath),
+    port: spec.port,
+    id: spec.id,
   };
 }
 
-async function ensureMonopolyRunning() {
-  if (await isMonopolyPortOpen()) {
+/**
+ * @param {string} gameId
+ */
+async function ensureGameRunning(gameId) {
+  const spec = GAME_SPECS[gameId];
+  if (!spec) {
+    throw new Error(`未知游戏：${gameId}`);
+  }
+
+  if (await isGameReady(spec, { timeoutMs: 1200 })) {
     return {
       ok: true,
       status: 'already-running',
+      port: spec.port,
+      id: spec.id,
     };
   }
 
-  if (!monopolyStartupPromise) {
-    monopolyStartupPromise = launchMonopolyProcess().finally(() => {
-      monopolyStartupPromise = null;
+  if (!startupPromises[gameId]) {
+    startupPromises[gameId] = launchGameProcess(spec).finally(() => {
+      startupPromises[gameId] = null;
     });
   }
 
-  return monopolyStartupPromise;
-}
-
-async function ensurePlaneRunning() {
-  if (await isPlaneServiceReady()) {
-    return {
-      ok: true,
-      status: 'already-running',
-      port: PLANE_PORT,
-    };
-  }
-
-  if (!planeStartupPromise) {
-    planeStartupPromise = launchPlaneProcess().finally(() => {
-      planeStartupPromise = null;
-    });
-  }
-
-  return planeStartupPromise;
+  return startupPromises[gameId];
 }
 
 function createGameLauncherRouter() {
   const router = express.Router();
 
-  router.get('/start-game/monopoly', async (_request, response) => {
-    try {
-      const result = await ensureMonopolyRunning();
-      response.json(result);
-    } catch (error) {
-      response.status(500).json({
-        ok: false,
-        status: 'failed',
-        message: error instanceof Error ? error.message : '启动大富翁失败',
-      });
-    }
-  });
+  Object.keys(GAME_SPECS).forEach((gameId) => {
+    const spec = GAME_SPECS[gameId];
+    router.get(`/start-game/${gameId}`, async (_request, response) => {
+      try {
+        const result = await ensureGameRunning(gameId);
+        response.json({
+          ...result,
+          port: spec.port,
+          roomMode: 'syncboard-room',
+          hint: `${spec.label}房间与 SyncBoard 当前房间名绑定；同一房间的人会进入同一局。`,
+        });
+      } catch (error) {
+        response.status(500).json({
+          ok: false,
+          status: 'failed',
+          message: error instanceof Error ? error.message : `启动${spec.label}失败`,
+        });
+      }
+    });
 
-  router.get('/start-game/plane', async (_request, response) => {
-    try {
-      const result = await ensurePlaneRunning();
+    router.get(`/${gameId}-status`, async (_request, response) => {
+      const ready = await isGameReady(spec, { timeoutMs: 1200 });
       response.json({
-        ...result,
-        port: PLANE_PORT,
-        // Room model: plane gameId is bound to SyncBoard room name on the client.
-        roomMode: 'syncboard-room',
-        hint: '飞行棋房间与 SyncBoard 当前房间名绑定；同一房间的人会进入同一局。',
+        ok: ready,
+        port: spec.port,
+        host: spec.host,
       });
-    } catch (error) {
-      response.status(500).json({
-        ok: false,
-        status: 'failed',
-        message: error instanceof Error ? error.message : '启动飞行棋失败',
-      });
-    }
+    });
   });
 
-  // Browser-side connectivity probe helper (same-origin) for clearer errors.
+  // Back-compat alias used by older clients
   router.get('/plane-status', async (_request, response) => {
-    const ready = await isPlaneServiceReady({ timeoutMs: 1200 });
+    const ready = await isGameReady(GAME_SPECS.plane, { timeoutMs: 1200 });
     response.json({
       ok: ready,
-      port: PLANE_PORT,
-      host: PLANE_HOST,
+      port: GAME_SPECS.plane.port,
+      host: GAME_SPECS.plane.host,
     });
   });
 
@@ -463,4 +469,5 @@ function createGameLauncherRouter() {
 module.exports = {
   createGameLauncherRouter,
   stopManagedGameProcesses,
+  GAME_SPECS,
 };

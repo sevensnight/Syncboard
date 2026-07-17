@@ -73,7 +73,7 @@ function detectDeviceType() {
 
 function getStoredApp() {
   const stored = getStoredValue(STORAGE_KEYS.app);
-  return ['whiteboard', 'monopoly', 'plane'].includes(stored) ? stored : 'whiteboard';
+  return ['whiteboard', 'monopoly', 'plane', 'uno', 'skribbl'].includes(stored) ? stored : 'whiteboard';
 }
 
 function getStoredSessionId() {

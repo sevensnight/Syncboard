@@ -9,6 +9,10 @@
     "clean:port": "node ./scripts/port-cleanup.mjs",
     "start": "node server.js",
     "start:clean": "npm run clean:port && npm start",
+    "setup:uno": "npm install --prefix games/uno && npm install --prefix games/uno/client && npm run build --prefix games/uno/client",
+    "build:uno": "npm run build --prefix games/uno/client",
+    "setup:skribbl": "npm install --prefix games/skribbl",
+    "setup:games": "npm run setup:uno && npm run setup:skribbl",
     "test:self": "node ./scripts/self-check.mjs",
     "test:smoke": "node ./.playwright-smoke.mjs"
   },

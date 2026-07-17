@@ -2,7 +2,7 @@
 
 一个面向同一局域网团队的轻量协作平台，集成了多人实时白板、房间聊天、文件共享、二维码分享、深浅色主题，以及适配手机 / 平板 / 桌面端的响应式界面。
 
-房间内还可一键启动内嵌的**大富翁**与**飞行棋**小游戏（基于开源项目二次改编，见文末 [第三方开源致谢](#第三方开源致谢)）。
+房间内还可一键启动内嵌小游戏：**大富翁**、**飞行棋**、**UNO**、**你画我猜**（基于开源项目二次改编，见文末 [第三方开源致谢](#第三方开源致谢)）。
 
 ## 当前能力
 
@@ -13,7 +13,7 @@
 - 局域网分享：唯一推荐内网地址、带房间参数的分享链接、二维码
 - 响应式工作台：桌面侧栏、移动端抽屉、白板工具栏 FAB 显隐
 - 深浅色主题：切换后自动持久化
-- 内嵌小游戏：大富翁（Vite 开发服代理）、飞行棋（Spring Boot WebSocket）
+- 内嵌小游戏：大富翁、飞行棋、UNO、你画我猜（按需拉起子进程 + iframe）
 
 ## 启动方式
 
@@ -96,8 +96,10 @@ src/server/               # Express + Socket.io 服务端
 public/                   # 前端静态资源
 src/client/styles/        # Tailwind 源样式
 games/
-  monopoly/               # 大富翁（改编自 itaylayzer/Monopoly）
-  aeroplane-chess/        # 飞行棋（改编自 kan01234/aeroplanes-chess）
+  monopoly/               # 大富翁（改编自 itaylayzer/Monopoly）→ :3001
+  aeroplane-chess/        # 飞行棋（改编自 kan01234/aeroplanes-chess）→ :3002
+  uno/                    # UNO（改编自 mizanxali/uno-online）→ :3003
+  skribbl/                # 你画我猜（改编自 Aditya-ds-1806/Skribblrs.io）→ :3004
 scripts/                  # 端口清理、自检等
 data/rooms/               # 房间持久化 JSON（运行时生成，不入库）
 uploads/                  # 上传文件（运行时生成，不入库）
@@ -109,14 +111,29 @@ uploads/                  # 上传文件（运行时生成，不入库）
 
 ```bash
 # 大富翁
-cd games/monopoly
-npm install
+cd games/monopoly && npm install && cd ../..
+
+# UNO + 你画我猜（推荐一键）
+npm run setup:games
+
+# 或分别安装：
+# npm run setup:uno      # 含 client 构建
+# npm run setup:skribbl
 
 # 飞行棋（需本机 Java 8+ 与 Maven）
 cd games/aeroplane-chess
 # 首次启动会自动 mvn package；也可手动：
 mvn -DskipTests package
 ```
+
+| 游戏 | 端口 | 启动命令（也可由主服务自动拉起） |
+|------|------|----------------------------------|
+| 大富翁 | 3001 | `games/monopoly` → `npm run dev` |
+| 飞行棋 | 3002 | Java jar / Maven |
+| UNO | 3003 | `games/uno` → `node server.js`（需先 build client） |
+| 你画我猜 | 3004 | `games/skribbl` → `npm start` |
+
+同一 SyncBoard 房间名会作为游戏房间码传入，**同房间的人进入同一局**。
 
 ## 开发说明
 
@@ -204,4 +221,30 @@ npm run build:css
 原项目为 React + Vite + Peer.js 的多人在线大富翁。本项目将其作为子应用嵌入：开发服由主服务在 `3001` 拉起，并调整 base 路径与局域网协作场景下的配置（如 `src/config.ts`）。
 
 原 Monopoly README 中还致谢了 [danielstern 的 monopoly.json](https://github.com/danielstern/science/blob/master/monopoly.json) 等资源，详见上游仓库说明。
+
+### UNO
+
+| 项目 | 说明 |
+|------|------|
+| 源仓库 | [mizanxali/uno-online](https://github.com/mizanxali/uno-online) |
+| 原作者 | Mizan Ali（`mizanxali`） |
+| 协议 | ISC（上游 `package.json`） |
+| 本仓库路径 | `games/uno/` |
+
+原项目为 React + Socket.IO 双人 UNO。本项目将其嵌入 SyncBoard：默认端口 `3003`、同源 Socket、按房间名自动进房，并支持传入用户名。
+
+### 你画我猜（Skribbl 类）
+
+| 项目 | 说明 |
+|------|------|
+| 源仓库 | [Aditya-ds-1806/Skribblrs.io](https://github.com/Aditya-ds-1806/Skribblrs.io) |
+| 原作者 | Aditya D.S.（`Aditya-ds-1806`） |
+| 协议 | MIT |
+| 本仓库路径 | `games/skribbl/` |
+
+原项目为 Skribbl.io 风格的画猜游戏（Express + EJS + Socket.IO）。本项目将其嵌入 SyncBoard：默认端口 `3004`、以房间名作为局 ID、自动填入用户名并进房；首位进入者可主持开局。
+
+---
+
+若你是上述项目的作者，并对署名或使用方式有疑问，欢迎提 Issue，我们会尽快调整。
 

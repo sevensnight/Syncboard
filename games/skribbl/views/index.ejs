@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skribblrs.io</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <link rel="stylesheet" href="css/index.css">
+    <link rel="preload" href="audio/click.mp3" as="audio">
+    <link rel="preload" href="audio/your-turn.mp3" as="audio">
+    <link rel="preload" href="audio/clock.mp3" as="audio">
+    <link rel="preload" href="audio/correct.mp3" as="audio">
+    <link rel="preload" href="audio/gameover.mp3" as="audio">
+    <link rel="preload" href="audio/pop.mp3" as="audio">
+    <link rel="preload" href="audio/exit.mp3" as="audio">
+    <link rel="preload" href="audio/timer-start.mp3" as="audio">
+    <link rel="preload" href="audio/hint.mp3" as="audio">
+</head>
+
+<body class="vh-100">
+    <%- include('partials/landing', { roomID }) %>
+    <%- include('partials/settings', { roomID }) %>
+    <%- include('partials/gameZone') %>
+    <%- include('partials/gameEnd') %>
+    <%- include('partials/footer') %>
+    <script src="https://cdn.jsdelivr.net/npm/socket.io-client/dist/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/howler@2.2.1/dist/howler.min.js"></script>
+    <script src="js/avatar.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,38 @@
+{
+  "name": "skribbl",
+  "version": "1.0.0",
+  "description": "A clone of skribbl.io",
+  "main": "./bin/www",
+  "scripts": {
+    "start": "node ./bin/www"
+  },
+  "author": "Aditya D.S.",
+  "license": "MIT",
+  "dependencies": {
+    "chance": "^1.1.7",
+    "ejs": "^3.1.6",
+    "express": "^4.17.1",
+    "grapheme-splitter": "^1.0.4",
+    "leven": "^3.1.0",
+    "nanoid": "^3.1.20",
+    "socket.io": "^3.1.0"
+  },
+  "devDependencies": {
+    "eslint": "^7.18.0",
+    "eslint-config-airbnb-base": "^14.2.1",
+    "eslint-plugin-import": "^2.22.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Aditya-ds-1806/Skribblrs.io.git"
+  },
+  "keywords": [
+    "skribbl.io",
+    "socket.io",
+    "websockets"
+  ],
+  "bugs": {
+    "url": "https://github.com/Aditya-ds-1806/Skribblrs.io/issues"
+  },
+  "homepage": "https://skribblrs.herokuapp.com"
+}

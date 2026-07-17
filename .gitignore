@@ -18,6 +18,10 @@ games/aeroplane-chess/target/
 # Monopoly Vite build output (outDir = docs)
 games/monopoly/docs/
 
+# UNO CRA build is required at runtime — commit client/build if you want
+# zero-setup clones; otherwise run: npm run setup:uno
+# games/uno/client/build/
+
 # extra lockfiles (project uses npm / package-lock.json)
 games/monopoly/yarn.lock
 games/monopoly/bun.lock

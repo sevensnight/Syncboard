@@ -12,14 +12,84 @@ import { t, cycleLang, getLang, getLangLabel, getLangCycleLabel } from './module
 import { touchRoomHistory, listRoomHistory } from './modules/room-history.js';
 
 const socket = getSocket();
-const MONOPOLY_PORT = 3001;
-const PLANE_PORT = 3002;
-const MONOPOLY_STARTUP_DELAY_MS = 3500;
-const MONOPOLY_IFRAME_READY_TIMEOUT_MS = 15000;
-const PLANE_IFRAME_READY_TIMEOUT_MS = 35000;
+
+/** Embedded mini-games launched via /api/start-game/:id */
+const GAME_APPS = {
+  monopoly: {
+    id: 'monopoly',
+    port: 3001,
+    icon: '🎲',
+    i18nKey: 'monopoly',
+    fallbackName: '大富翁',
+    startupDelayMs: 3500,
+    iframeTimeoutMs: 15000,
+    probe: false,
+    buildUrl({ protocol, host, roomId, username }) {
+      const url = new URL(`${protocol}//${host}:3001/Monopoly/`);
+      url.searchParams.set('username', username);
+      url.searchParams.set('room', roomId);
+      url.searchParams.set('source', 'syncboard');
+      return url.toString();
+    },
+  },
+  plane: {
+    id: 'plane',
+    port: 3002,
+    icon: '✈️',
+    i18nKey: 'plane',
+    fallbackName: '飞行棋',
+    startupDelayMs: 0,
+    iframeTimeoutMs: 35000,
+    probe: true,
+    buildUrl({ protocol, host, roomId, username }) {
+      const url = new URL(`${protocol}//${host}:3002/`);
+      url.searchParams.set('gameId', roomId);
+      url.searchParams.set('room', roomId);
+      url.searchParams.set('username', username);
+      url.searchParams.set('source', 'syncboard');
+      return url.toString();
+    },
+  },
+  uno: {
+    id: 'uno',
+    port: 3003,
+    icon: '🃏',
+    i18nKey: 'uno',
+    fallbackName: 'UNO',
+    startupDelayMs: 800,
+    iframeTimeoutMs: 20000,
+    probe: true,
+    buildUrl({ protocol, host, roomId, username }) {
+      const url = new URL(`${protocol}//${host}:3003/`);
+      url.searchParams.set('room', roomId);
+      url.searchParams.set('username', username);
+      url.searchParams.set('source', 'syncboard');
+      return url.toString();
+    },
+  },
+  skribbl: {
+    id: 'skribbl',
+    port: 3004,
+    icon: '✏️',
+    i18nKey: 'skribbl',
+    fallbackName: '你画我猜',
+    startupDelayMs: 600,
+    iframeTimeoutMs: 20000,
+    probe: true,
+    buildUrl({ protocol, host, roomId, username }) {
+      const url = new URL(`${protocol}//${host}:3004/`);
+      url.searchParams.set('id', roomId);
+      url.searchParams.set('room', roomId);
+      url.searchParams.set('username', username);
+      url.searchParams.set('source', 'syncboard');
+      return url.toString();
+    },
+  },
+};
+
+const GAME_APP_IDS = Object.keys(GAME_APPS);
 let appSwitchRequestId = 0;
-let monopolyIframeReady = false;
-let planeIframeReady = false;
+const gameIframeReady = Object.fromEntries(GAME_APP_IDS.map((id) => [id, false]));
 
 const elements = {
   root: document.documentElement,
@@ -379,8 +449,7 @@ function applyI18n() {
   elements.appMenuItems.forEach((item) => {
     const app = item.dataset.app;
     if (app === 'whiteboard') item.textContent = t('whiteboard');
-    if (app === 'monopoly') item.textContent = t('monopoly');
-    if (app === 'plane') item.textContent = t('plane');
+    if (GAME_APPS[app]) item.textContent = t(GAME_APPS[app].i18nKey);
   });
   if (elements.appMenuCurrentText) {
     elements.appMenuCurrentText.textContent = getAppDisplayName(state.currentApp);
@@ -642,15 +711,30 @@ function setAppMenuOpen(nextValue) {
 }
 
 function getAppDisplayName(app) {
-  if (app === 'monopoly') {
-    return t('monopoly');
+  if (GAME_APPS[app]) {
+    return t(GAME_APPS[app].i18nKey);
   }
-
-  if (app === 'plane') {
-    return t('plane');
-  }
-
   return t('whiteboard');
+}
+
+function isGameApp(app) {
+  return Boolean(GAME_APPS[app]);
+}
+
+function getGameConfig(app) {
+  return GAME_APPS[app] || null;
+}
+
+function buildGameUrl(app) {
+  const config = getGameConfig(app);
+  if (!config) {
+    return '';
+  }
+  const protocol = window.location.protocol || 'http:';
+  const host = window.location.hostname || 'localhost';
+  const roomId = String(state.currentRoomId || '').trim() || 'lobby';
+  const username = String(state.currentUser || '').trim() || '用户';
+  return config.buildUrl({ protocol, host, roomId, username });
 }
 
 function syncAppMenuSelection(app) {
@@ -711,34 +795,9 @@ function updateCurrentAppText(app) {
   }
 }
 
-function buildMonopolyUrl() {
-  const protocol = window.location.protocol || 'http:';
-  const host = window.location.hostname || 'localhost';
-  const roomId = String(state.currentRoomId || '').trim() || 'lobby';
-  const username = String(state.currentUser || '').trim() || '用户';
-  const monopolyUrl = new URL(`${protocol}//${host}:${MONOPOLY_PORT}/Monopoly/`);
-  monopolyUrl.searchParams.set('username', username);
-  monopolyUrl.searchParams.set('room', roomId);
-  monopolyUrl.searchParams.set('source', 'syncboard');
-  return monopolyUrl.toString();
-}
-
-function buildPlaneUrl() {
-  const protocol = window.location.protocol || 'http:';
-  const host = window.location.hostname || 'localhost';
-  const roomId = String(state.currentRoomId || '').trim() || 'lobby';
-  const username = String(state.currentUser || '').trim() || '用户';
-  // gameId/room bind this plane match to the current SyncBoard room name.
-  const planeUrl = new URL(`${protocol}//${host}:${PLANE_PORT}/`);
-  planeUrl.searchParams.set('gameId', roomId);
-  planeUrl.searchParams.set('room', roomId);
-  planeUrl.searchParams.set('username', username);
-  planeUrl.searchParams.set('source', 'syncboard');
-  return planeUrl.toString();
-}
-
 function getGameIframeTimeout(app) {
-  return app === 'plane' ? PLANE_IFRAME_READY_TIMEOUT_MS : MONOPOLY_IFRAME_READY_TIMEOUT_MS;
+  const config = getGameConfig(app);
+  return config ? config.iframeTimeoutMs : 15000;
 }
 
 function syncActiveGameIframeSession() {
@@ -746,11 +805,11 @@ function syncActiveGameIframeSession() {
     return;
   }
 
-  if (state.currentApp !== 'monopoly' && state.currentApp !== 'plane') {
+  if (!isGameApp(state.currentApp)) {
     return;
   }
 
-  const gameUrl = state.currentApp === 'monopoly' ? buildMonopolyUrl() : buildPlaneUrl();
+  const gameUrl = buildGameUrl(state.currentApp);
   const currentSrc = elements.gameStage.getAttribute('src') || '';
 
   if (currentSrc === gameUrl) {
@@ -758,11 +817,7 @@ function syncActiveGameIframeSession() {
   }
 
   // Room/user changed while a game is open — reload iframe with the new room binding.
-  if (state.currentApp === 'monopoly') {
-    monopolyIframeReady = false;
-  } else {
-    planeIframeReady = false;
-  }
+  gameIframeReady[state.currentApp] = false;
 
   const requestId = ++appSwitchRequestId;
   setMonopolyLoadingVisible(true);
@@ -771,7 +826,7 @@ function syncActiveGameIframeSession() {
 
   loadGameIframe(gameUrl, requestId, state.currentApp)
     .then(() => {
-      if (requestId !== appSwitchRequestId || (state.currentApp !== 'monopoly' && state.currentApp !== 'plane')) {
+      if (requestId !== appSwitchRequestId || !isGameApp(state.currentApp)) {
         return;
       }
       showGameStage();
@@ -808,7 +863,9 @@ function loadGameIframe(gameUrl, requestId, app) {
     }
 
     const iframe = elements.gameStage;
-    const gameName = app === 'monopoly' ? '大富翁' : '飞行棋';
+    const config = getGameConfig(app);
+    const gameName = config ? t(config.i18nKey) : app;
+    const port = config ? config.port : '?';
     const timeoutMs = getGameIframeTimeout(app);
     let settled = false;
 
@@ -826,16 +883,11 @@ function loadGameIframe(gameUrl, requestId, app) {
         return;
       }
 
-      if (app === 'monopoly') {
-        monopolyIframeReady = true;
-      } else {
-        planeIframeReady = true;
-      }
+      gameIframeReady[app] = true;
       resolve();
     };
 
     const timeoutHandle = window.setTimeout(() => {
-      const port = app === 'monopoly' ? MONOPOLY_PORT : PLANE_PORT;
       finish(new Error(
         `${gameName}页面加载超时（${Math.round(timeoutMs / 1000)}s）。`
         + `请确认本机可访问 ${window.location.hostname}:${port}，`
@@ -888,26 +940,8 @@ function delay(ms) {
   });
 }
 
-async function startMonopolyEngine() {
-  const response = await fetch('/api/start-game/monopoly');
-  let payload = null;
-
-  try {
-    payload = await response.json();
-  } catch (_error) {
-    payload = null;
-  }
-
-  if (!response.ok || payload?.ok === false) {
-    const message = payload?.message || '请检查后端日志';
-    throw new Error(message);
-  }
-
-  return payload;
-}
-
-async function startPlaneEngine() {
-  const response = await fetch('/api/start-game/plane');
+async function startGameEngine(app) {
+  const response = await fetch(`/api/start-game/${app}`);
   let payload = null;
 
   try {
@@ -925,7 +959,7 @@ async function startPlaneEngine() {
 }
 
 async function setActiveApp(nextApp) {
-  const app = ['monopoly', 'plane'].includes(nextApp) ? nextApp : 'whiteboard';
+  const app = isGameApp(nextApp) ? nextApp : 'whiteboard';
   const requestId = ++appSwitchRequestId;
   state.currentApp = app;
   persistSession();
@@ -942,15 +976,16 @@ async function setActiveApp(nextApp) {
     return;
   }
 
-  const gameIcon = app === 'monopoly' ? '🎲' : '✈️';
-  const gameName = app === 'monopoly' ? '大富翁' : '飞行棋';
+  const config = getGameConfig(app);
+  const gameIcon = config.icon;
+  const gameName = t(config.i18nKey);
 
   setMonopolyLoadingVisible(true);
   setMonopolyLoadingState(`${gameIcon} 正在唤醒${gameName}引擎...`);
   showWhiteboardStage();
 
   try {
-    const startupResult = app === 'monopoly' ? await startMonopolyEngine() : await startPlaneEngine();
+    const startupResult = await startGameEngine(app);
 
     if (requestId !== appSwitchRequestId || state.currentApp !== app) {
       return;
@@ -960,9 +995,8 @@ async function setActiveApp(nextApp) {
       setMonopolyLoadingState(`${gameIcon} ${gameName}引擎已就绪，正在连接房间...`);
     } else {
       setMonopolyLoadingState(`${gameIcon} 引擎已启动，正在准备房间...`);
-      // Monopoly Vite needs a short warm-up; plane jar is ready once /api says so.
-      if (app === 'monopoly') {
-        await delay(MONOPOLY_STARTUP_DELAY_MS);
+      if (config.startupDelayMs > 0) {
+        await delay(config.startupDelayMs);
       }
     }
 
@@ -970,32 +1004,28 @@ async function setActiveApp(nextApp) {
       return;
     }
 
-    const gameUrl = app === 'monopoly' ? buildMonopolyUrl() : buildPlaneUrl();
+    const gameUrl = buildGameUrl(app);
 
     if (!elements.gameStage) {
       throw new Error('未找到游戏容器');
     }
 
-    if (app === 'plane') {
-      setMonopolyLoadingState(`${gameIcon} 正在探测飞行棋服务（房间：${state.currentRoomId}）...`);
+    if (config.probe) {
+      setMonopolyLoadingState(`${gameIcon} 正在探测${gameName}服务（房间：${state.currentRoomId}）...`);
       const reachable = await probeGameUrlReachable(gameUrl);
       if (!reachable) {
         throw new Error(
-          `浏览器无法访问飞行棋端口 ${PLANE_PORT}。`
-          + '请允许 Java/Node 通过 Windows 防火墙的“专用网络”，或直接在浏览器打开 '
-          + `http://${window.location.hostname}:${PLANE_PORT}/ 验证。`,
+          `浏览器无法访问${gameName}端口 ${config.port}。`
+          + '请允许 Node/Java 通过 Windows 防火墙的“专用网络”，或直接在浏览器打开 '
+          + `http://${window.location.hostname}:${config.port}/ 验证。`,
         );
       }
-      setMonopolyLoadingState(`${gameIcon} 已连接房间「${state.currentRoomId}」，正在加载棋盘...`);
+      setMonopolyLoadingState(`${gameIcon} 已连接房间「${state.currentRoomId}」，正在加载...`);
     } else {
       setMonopolyLoadingState(`${gameIcon} 正在加载${gameName}页面...`);
     }
 
-    if (app === 'monopoly') {
-      monopolyIframeReady = false;
-    } else {
-      planeIframeReady = false;
-    }
+    gameIframeReady[app] = false;
 
     await loadGameIframe(gameUrl, requestId, app);
 

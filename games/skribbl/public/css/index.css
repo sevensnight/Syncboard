@@ -1,0 +1,177 @@
+body {
+    background-image: url('/images/background.png');
+    background-repeat: repeat;
+    background-position: center;
+    background-size: 250px;
+    overflow: hidden;
+}
+
+a {
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+#landing,
+#settings,
+#gameEnded {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+#statsDiv {
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+/* canvas */
+
+canvas {
+    background-color: #fff;
+    cursor: crosshair;
+}
+
+/* colors */
+
+.color {
+    display: inline-block;
+    height: 25px;
+    width: 25px;
+}
+
+.selected-color {
+    display: inline-block;
+    height: 50px;
+    width: 50px;
+    background-color: #000;
+}
+
+.white {
+    background-color: #fff;
+}
+
+.black {
+    background-color: #000;
+}
+
+.grey1 {
+    background-color: #c1c1c1;
+}
+
+.grey2 {
+    background-color: rgb(76, 76, 76);
+}
+
+.red1 {
+    background-color: rgb(239, 19, 11);
+}
+
+.red2 {
+    background-color: rgb(116, 11, 7);
+}
+
+.orange1 {
+    background-color: rgb(255, 113, 0);
+}
+
+.orange2 {
+    background-color: rgb(194, 56, 0);
+}
+
+.yellow1 {
+    background-color: rgb(255, 228, 0);
+}
+
+.yellow2 {
+    background-color: rgb(232, 162, 0);
+}
+
+.green1 {
+    background-color: rgb(0, 204, 0);
+}
+
+.green2 {
+    background-color: rgb(0, 85, 16);
+}
+
+.skyblue1 {
+    background-color: rgb(0, 178, 255);
+}
+
+.skyblue2 {
+    background-color: rgb(0, 86, 158);
+}
+
+.blue1 {
+    background-color: rgb(35, 31, 211);
+}
+
+.blue2 {
+    background-color: rgb(14, 8, 101);
+}
+
+.purple1 {
+    background-color: rgb(163, 0, 186);
+}
+
+.purple2 {
+    background-color: rgb(85, 0, 105);
+}
+
+.pink1 {
+    background-color: rgb(211, 124, 170);
+}
+
+.pink2 {
+    background-color: rgb(167, 85, 116);
+}
+
+.brown1 {
+    background-color: rgb(160, 82, 45);
+}
+
+.brown2 {
+    background-color: rgb(99, 48, 13);
+}
+
+/* players */
+div.players div.row:nth-of-type(2n+1) {
+    background-color: rgba(207, 204, 204, 0.973);
+}
+
+div.players div.row:nth-of-type(2n) {
+    background-color: #fff;
+}
+
+/* chat */
+.messages {
+    overflow-y: auto;
+    height: 25em;
+    scroll-behavior: smooth;
+}
+
+.messages p:nth-of-type(2n) {
+    background-color: rgba(207, 204, 204, 0.973);
+}
+
+.correct {
+    color: #0f5132;
+    background-color: #d1e7dd !important;
+    border-color: #badbcc;
+}
+
+.close {
+    color: #664d03;
+    background-color: #fff3cd !important;
+    border-color: #ffecb5;
+}
+
+@media (max-width: 992px) {
+    .messages {
+        height: 5em;
+    }
+}

@@ -1,0 +1,19 @@
+#!/usr/bin/env node
+
+const { EventEmitter } = require('events');
+const app = require('../app');
+const sockets = require('../sockets');
+
+global.round = new EventEmitter();
+global.games = {};
+global.BONUS = 250;
+global.MAX_POINTS = 500;
+
+const PORT = Number(process.env.PORT) || 3004;
+const HOST = process.env.HOST || process.env.IP || '0.0.0.0';
+
+const server = app.listen(PORT, HOST, () => {
+    console.log(`Skribbl server listening on http://${HOST}:${server.address().port}`);
+});
+
+sockets.init(server);
